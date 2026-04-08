@@ -11,6 +11,8 @@
     "build:debug": "bash scripts/build-apk.sh debug",
     "build:release": "bash scripts/build-apk.sh release",
     "ota:publish": "bash scripts/publish-ota.sh",
+    "ota:publish:local": "bash scripts/publish-ota.sh --local",
+    "ota:publish:github": "bash scripts/publish-ota.sh",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
