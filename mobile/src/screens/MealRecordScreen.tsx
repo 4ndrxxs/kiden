@@ -9,15 +9,9 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing, radius, touchTarget } from '../theme/spacing';
 import { GlassCard, GradientButton, IconButton, SectionHeader, StatusBadge } from '../components/common';
+import { MEAL_TYPES } from '../config/constants';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-
-const mealTypeConfig: Record<MealType, { label: string; icon: string; time: string }> = {
-  breakfast: { label: '아침', icon: '🌅', time: '07:00 ~ 09:00' },
-  lunch: { label: '점심', icon: '☀️', time: '12:00 ~ 14:00' },
-  dinner: { label: '저녁', icon: '🌙', time: '18:00 ~ 20:00' },
-  snack: { label: '간식', icon: '🍪', time: '기타' },
-};
 
 export function MealRecordScreen() {
   const insets = useSafeAreaInsets();
@@ -40,26 +34,24 @@ export function MealRecordScreen() {
         {/* 끼니 선택 */}
         <SectionHeader title="끼니 선택" />
         <View style={styles.mealGrid}>
-          {(Object.entries(mealTypeConfig) as [MealType, typeof mealTypeConfig.breakfast][]).map(
-            ([key, config]) => (
-              <Pressable
-                key={key}
-                onPress={() => setSelectedMeal(key)}
-                style={[
-                  styles.mealCard,
-                  selectedMeal === key && styles.mealCardSelected,
-                ]}
-              >
-                <Text style={styles.mealEmoji}>{config.icon}</Text>
-                <Text style={[
-                  styles.mealLabel,
-                  selectedMeal === key && styles.mealLabelSelected,
-                ]}>
-                  {config.label}
-                </Text>
-              </Pressable>
-            ),
-          )}
+          {MEAL_TYPES.map((item) => (
+            <Pressable
+              key={item.key}
+              onPress={() => setSelectedMeal(item.key as MealType)}
+              style={[
+                styles.mealCard,
+                selectedMeal === item.key && styles.mealCardSelected,
+              ]}
+            >
+              <Text style={styles.mealEmoji}>{item.icon}</Text>
+              <Text style={[
+                styles.mealLabel,
+                selectedMeal === item.key && styles.mealLabelSelected,
+              ]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* 음식 입력 방법 */}

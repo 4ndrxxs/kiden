@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,35 +9,30 @@ import { typography } from '../theme/typography';
 import { spacing, radius, touchTarget } from '../theme/spacing';
 import { GlassCard, IconButton, ProgressGauge } from '../components/common';
 import { useHealthStore } from '../stores/healthStore';
-
-const quickAmounts = [
-  { label: '한 모금', amount: 50, icon: '💧' },
-  { label: '반 컵', amount: 100, icon: '🥛' },
-  { label: '한 컵', amount: 200, icon: '🥤' },
-  { label: '한 병', amount: 500, icon: '🍶' },
-];
+import { useUserStore } from '../stores/userStore';
+import { WATER_PRESETS } from '../config/constants';
 
 export function WaterIntakeScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
-  const { addWaterEntry, getTodayWater, waterEntries } = useHealthStore();
+  const { addWaterEntry, getTodayWater, waterEntries, fetchTodayData } = useHealthStore();
+  const maxWater = useUserStore((s) => s.settings.waterLimitMl);
 
   const todayWater = getTodayWater();
-  const maxWater = 700; // 기본 상한
   const percentage = Math.min((todayWater / maxWater) * 100, 100);
 
+  const todayStr = new Date().toISOString().split('T')[0];
   const todayEntries = waterEntries
-    .filter((e) => e.date === new Date().toISOString().split('T')[0])
+    .filter((e) => e.recordedAt.startsWith(todayStr))
     .slice(0, 10);
 
-  const handleAdd = (amount: number) => {
-    addWaterEntry({
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      amountMl: amount,
-      timestamp: new Date().toISOString(),
-    });
+  const handleAdd = async (amount: number) => {
+    await addWaterEntry(amount);
   };
+
+  useEffect(() => {
+    fetchTodayData();
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
@@ -74,7 +69,7 @@ export function WaterIntakeScreen() {
 
         {/* 빠른 추가 버튼 */}
         <View style={styles.quickGrid}>
-          {quickAmounts.map((item) => (
+          {WATER_PRESETS.map((item) => (
             <Pressable
               key={item.amount}
               onPress={() => handleAdd(item.amount)}
@@ -99,7 +94,7 @@ export function WaterIntakeScreen() {
                 <View key={entry.id}>
                   <View style={styles.historyItem}>
                     <Text style={styles.historyTime}>
-                      {new Date(entry.timestamp).toLocaleTimeString('ko-KR', {
+                      {new Date(entry.recordedAt).toLocaleTimeString('ko-KR', {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}

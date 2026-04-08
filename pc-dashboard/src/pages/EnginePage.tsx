@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Play, Square, RotateCcw, Thermometer, Gauge, HardDrive } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
 import { StatusChip } from '../components/StatusChip';
+import { config, defaultModels } from '../config';
 
 function ControlButton({ icon: Icon, label, color, disabled }: {
   icon: typeof Play; label: string; color: string; disabled?: boolean;
@@ -23,91 +25,196 @@ function ControlButton({ icon: Icon, label, color, disabled }: {
 }
 
 export function EnginePage() {
+  const [selectedModel, setSelectedModel] = useState(defaultModels[0]);
+  const [engineStatus, setEngineStatus] = useState<'running' | 'stopped'>('stopped');
+  const [gpuMemUtil, setGpuMemUtil] = useState(0.9);
+  const [maxContext, setMaxContext] = useState(8192);
+  const [healthInterval, setHealthInterval] = useState(30);
+  const [autoStart, setAutoStart] = useState(true);
+  const [autoCrashRestart, setAutoCrashRestart] = useState(true);
+
+  const [vram, setVram] = useState('-- / 16 GB');
+  const [vramPercent, setVramPercent] = useState(0);
+  const [gpuUtil, setGpuUtil] = useState('--%');
+  const [gpuUtilPercent, setGpuUtilPercent] = useState(0);
+  const [gpuTemp, setGpuTemp] = useState('--\u00B0C');
+  const [gpuTempPercent, setGpuTempPercent] = useState(0);
+
+  // Extract port from vllmBaseUrl for display
+  const vllmPort = config.vllmBaseUrl.split(':').pop() || '8000';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchEngineStatus() {
+      try {
+        const res = await fetch(`${config.vllmBaseUrl}/health`);
+        if (!cancelled) setEngineStatus(res.ok ? 'running' : 'stopped');
+      } catch {
+        if (!cancelled) setEngineStatus('stopped');
+      }
+    }
+
+    async function fetchGpuMetrics() {
+      try {
+        const res = await fetch(`${config.vllmBaseUrl}/metrics`);
+        if (!cancelled && res.ok) {
+          const text = await res.text();
+          const vramUsedMatch = text.match(/gpu_memory_used_bytes\s+([\d.e+]+)/);
+          const vramTotalMatch = text.match(/gpu_memory_total_bytes\s+([\d.e+]+)/);
+          const utilMatch = text.match(/gpu_utilization_percent\s+([\d.]+)/);
+          const tempMatch = text.match(/gpu_temperature_celsius\s+([\d.]+)/);
+
+          if (vramUsedMatch && vramTotalMatch) {
+            const usedGB = (parseFloat(vramUsedMatch[1]) / 1e9).toFixed(1);
+            const totalGB = (parseFloat(vramTotalMatch[1]) / 1e9).toFixed(0);
+            setVram(`${usedGB} / ${totalGB} GB`);
+            setVramPercent(Math.round((parseFloat(vramUsedMatch[1]) / parseFloat(vramTotalMatch[1])) * 100));
+          }
+          if (utilMatch) {
+            const pct = parseFloat(utilMatch[1]);
+            setGpuUtil(`${pct.toFixed(0)}%`);
+            setGpuUtilPercent(Math.round(pct));
+          }
+          if (tempMatch) {
+            const temp = parseFloat(tempMatch[1]);
+            setGpuTemp(`${temp.toFixed(0)}\u00B0C`);
+            setGpuTempPercent(Math.min(100, Math.round((temp / 100) * 100)));
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setVram('-- / 16 GB');
+          setVramPercent(0);
+          setGpuUtil('--%');
+          setGpuUtilPercent(0);
+          setGpuTemp('--\u00B0C');
+          setGpuTempPercent(0);
+        }
+      }
+    }
+
+    fetchEngineStatus();
+    fetchGpuMetrics();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const isRunning = engineStatus === 'running';
+
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>엔진 관리</h1>
+      <h1 style={styles.title}>{'\uC5D4\uC9C4 \uAD00\uB9AC'}</h1>
 
       {/* 컨트롤 패널 */}
-      <GlassCard title="vLLM 제어">
+      <GlassCard title="vLLM \uC81C\uC5B4">
         <div style={styles.controlRow}>
-          <ControlButton icon={Play} label="시작" color="var(--safe)" />
-          <ControlButton icon={Square} label="중지" color="var(--danger)" disabled />
-          <ControlButton icon={RotateCcw} label="재시작" color="var(--caution)" disabled />
+          <ControlButton icon={Play} label={'\uC2DC\uC791'} color="var(--safe)" disabled={isRunning} />
+          <ControlButton icon={Square} label={'\uC911\uC9C0'} color="var(--danger)" disabled={!isRunning} />
+          <ControlButton icon={RotateCcw} label={'\uC7AC\uC2DC\uC791'} color="var(--caution)" disabled={!isRunning} />
         </div>
         <div style={styles.infoGrid}>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>모델</span>
-            <select style={styles.select}>
-              <option>google/gemma-4-12b</option>
-              <option>google/gemma-4-27b</option>
+            <span style={styles.infoLabel}>{'\uBAA8\uB378'}</span>
+            <select
+              style={styles.select}
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+            >
+              {defaultModels.map((model) => (
+                <option key={model} value={model}>{model}</option>
+              ))}
             </select>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>상태</span>
-            <StatusChip status="stopped" />
+            <span style={styles.infoLabel}>{'\uC0C1\uD0DC'}</span>
+            <StatusChip status={engineStatus} />
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>포트</span>
-            <span style={styles.infoValue}>8000</span>
+            <span style={styles.infoLabel}>{'\uD3EC\uD2B8'}</span>
+            <span style={styles.infoValue}>{vllmPort}</span>
           </div>
         </div>
       </GlassCard>
 
       {/* GPU 모니터링 */}
       <div style={styles.grid2}>
-        <GlassCard title="GPU 리소스">
+        <GlassCard title="GPU \uB9AC\uC18C\uC2A4">
           <div style={styles.gpuMetrics}>
             <div style={styles.metricRow}>
               <HardDrive size={16} color="var(--primary)" />
               <span style={styles.metricLabel}>VRAM</span>
-              <span style={styles.metricValue}>-- / 16 GB</span>
+              <span style={styles.metricValue}>{vram}</span>
             </div>
             <div style={styles.progressTrack}>
-              <div style={{ ...styles.progressBar, width: '0%', background: 'linear-gradient(90deg, var(--primary), #4DB0B4)' }} />
+              <div style={{ ...styles.progressBar, width: `${vramPercent}%`, background: 'linear-gradient(90deg, var(--primary), #4DB0B4)' }} />
             </div>
             <div style={styles.metricRow}>
               <Gauge size={16} color="var(--caution)" />
-              <span style={styles.metricLabel}>사용률</span>
-              <span style={styles.metricValue}>--%</span>
+              <span style={styles.metricLabel}>{'\uC0AC\uC6A9\uB960'}</span>
+              <span style={styles.metricValue}>{gpuUtil}</span>
             </div>
             <div style={styles.progressTrack}>
-              <div style={{ ...styles.progressBar, width: '0%', background: 'linear-gradient(90deg, var(--caution), #FFCE6B)' }} />
+              <div style={{ ...styles.progressBar, width: `${gpuUtilPercent}%`, background: 'linear-gradient(90deg, var(--caution), #FFCE6B)' }} />
             </div>
             <div style={styles.metricRow}>
               <Thermometer size={16} color="var(--danger)" />
-              <span style={styles.metricLabel}>온도</span>
-              <span style={styles.metricValue}>--°C</span>
+              <span style={styles.metricLabel}>{'\uC628\uB3C4'}</span>
+              <span style={styles.metricValue}>{gpuTemp}</span>
             </div>
             <div style={styles.progressTrack}>
-              <div style={{ ...styles.progressBar, width: '0%', background: 'linear-gradient(90deg, var(--safe), var(--danger))' }} />
+              <div style={{ ...styles.progressBar, width: `${gpuTempPercent}%`, background: 'linear-gradient(90deg, var(--safe), var(--danger))' }} />
             </div>
           </div>
         </GlassCard>
 
-        <GlassCard title="엔진 설정">
+        <GlassCard title={'\uC5D4\uC9C4 \uC124\uC815'}>
           <div style={styles.settingsGrid}>
             <div style={styles.settingRow}>
-              <span style={styles.settingLabel}>GPU 메모리 사용률</span>
-              <input type="range" min="0.5" max="0.95" step="0.05" defaultValue="0.9" style={styles.slider} />
-              <span style={styles.settingValue}>90%</span>
+              <span style={styles.settingLabel}>GPU {'\uBA54\uBAA8\uB9AC \uC0AC\uC6A9\uB960'}</span>
+              <input
+                type="range" min="0.5" max="0.95" step="0.05"
+                value={gpuMemUtil}
+                onChange={(e) => setGpuMemUtil(parseFloat(e.target.value))}
+                style={styles.slider}
+              />
+              <span style={styles.settingValue}>{Math.round(gpuMemUtil * 100)}%</span>
             </div>
             <div style={styles.settingRow}>
-              <span style={styles.settingLabel}>최대 컨텍스트</span>
-              <input type="range" min="2048" max="16384" step="1024" defaultValue="8192" style={styles.slider} />
-              <span style={styles.settingValue}>8192</span>
+              <span style={styles.settingLabel}>{'\uCD5C\uB300 \uCEE8\uD14D\uC2A4\uD2B8'}</span>
+              <input
+                type="range" min="2048" max="16384" step="1024"
+                value={maxContext}
+                onChange={(e) => setMaxContext(parseInt(e.target.value))}
+                style={styles.slider}
+              />
+              <span style={styles.settingValue}>{maxContext}</span>
             </div>
             <div style={styles.settingRow}>
-              <span style={styles.settingLabel}>헬스체크 간격</span>
-              <input type="range" min="10" max="120" step="10" defaultValue="30" style={styles.slider} />
-              <span style={styles.settingValue}>30초</span>
+              <span style={styles.settingLabel}>{'\uD5EC\uC2A4\uCCB4\uD06C \uAC04\uACA9'}</span>
+              <input
+                type="range" min="10" max="120" step="10"
+                value={healthInterval}
+                onChange={(e) => setHealthInterval(parseInt(e.target.value))}
+                style={styles.slider}
+              />
+              <span style={styles.settingValue}>{healthInterval}{'\uCD08'}</span>
             </div>
             <label style={styles.checkboxRow}>
-              <input type="checkbox" defaultChecked />
-              <span>PC 시작 시 자동 실행</span>
+              <input
+                type="checkbox"
+                checked={autoStart}
+                onChange={(e) => setAutoStart(e.target.checked)}
+              />
+              <span>PC {'\uC2DC\uC791 \uC2DC \uC790\uB3D9 \uC2E4\uD589'}</span>
             </label>
             <label style={styles.checkboxRow}>
-              <input type="checkbox" defaultChecked />
-              <span>크래시 시 자동 재시작</span>
+              <input
+                type="checkbox"
+                checked={autoCrashRestart}
+                onChange={(e) => setAutoCrashRestart(e.target.checked)}
+              />
+              <span>{'\uD06C\uB798\uC2DC \uC2DC \uC790\uB3D9 \uC7AC\uC2DC\uC791'}</span>
             </label>
           </div>
         </GlassCard>

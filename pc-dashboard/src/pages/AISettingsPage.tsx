@@ -3,29 +3,47 @@ import { Save, RotateCcw, Plus, ToggleLeft, ToggleRight, Send } from 'lucide-rea
 import { GlassCard } from '../components/GlassCard';
 
 const presets = [
-  { id: 'health', name: '건강 상담', active: true },
-  { id: 'diet', name: '식단 분석', active: false },
-  { id: 'emotion', name: '감정 지지', active: false },
+  { id: 'health', name: '\uAC74\uAC15 \uC0C1\uB2F4', active: true },
+  { id: 'diet', name: '\uC2DD\uB2E8 \uBD84\uC11D', active: false },
+  { id: 'emotion', name: '\uAC10\uC815 \uC9C0\uC9C0', active: false },
 ];
 
 const contextSlots = [
-  { name: '환자 기본 프로필', enabled: true, autoUpdate: false },
-  { name: '최근 7일 건강 기록', enabled: true, autoUpdate: true },
-  { name: '식이 제한 기준', enabled: true, autoUpdate: false },
-  { name: '금지 행동 규칙', enabled: true, autoUpdate: false },
-  { name: '커스텀 지침', enabled: false, autoUpdate: false },
+  { name: '\uD658\uC790 \uAE30\uBCF8 \uD504\uB85C\uD544', enabled: true, autoUpdate: false },
+  { name: '\uCD5C\uADFC 7\uC77C \uAC74\uAC15 \uAE30\uB85D', enabled: true, autoUpdate: true },
+  { name: '\uC2DD\uC774 \uC81C\uD55C \uAE30\uC900', enabled: true, autoUpdate: false },
+  { name: '\uAE08\uC9C0 \uD589\uB3D9 \uADDC\uCE59', enabled: true, autoUpdate: false },
+  { name: '\uCEE4\uC2A4\uD140 \uC9C0\uCE68', enabled: false, autoUpdate: false },
 ];
+
+const defaultSystemPrompt = `\uB2F9\uC2E0\uC740 \uD22C\uC11D \uD658\uC790 \uC804\uC6A9 \uAC74\uAC15 \uB3C4\uC6B0\uBBF8\uC785\uB2C8\uB2E4.
+
+[\uD658\uC790 \uD504\uB85C\uD544]
+- IGA \uC2E0\uC99D 20\uB144\uCC28, \uD608\uC561\uD22C\uC11D \uC8FC 3\uD68C (\uC6D4/\uC218/\uAE08)
+- 1\uB144 \uC804 \uD22C\uBA85\uC2E0\uC138\uD3EC\uC554 3\uAE30 \uC2E0\uC7A5 \uC81C\uAC70\uC220
+- \uD55C\uCABD \uC2E0\uC7A5 \uC794\uC874, \uC18C\uBCC0\uB7C9 \uC218\uC220 \uC804 \uB300\uBE44 \uC57D 1/10
+
+[\uADDC\uCE59]
+1. \uC808\uB300 \uC9C4\uB2E8\uD558\uAC70\uB098 \uCC98\uBC29\uD558\uC9C0 \uB9C8\uC138\uC694.
+2. \uD22C\uC11D \uD658\uC790 \uC2DD\uC774 \uAE30\uC900\uC5D0 \uAE30\uBC18\uD574 \uB2F5\uBCC0\uD558\uC138\uC694.
+3. \uC751\uAE09 \uC99D\uC0C1 \uAC10\uC9C0 \uC2DC \uC989\uC2DC 119 \uC548\uB0B4\uD558\uC138\uC694.
+4. \uD55C\uAD6D\uC5B4\uB85C \uB2F5\uBCC0\uD558\uACE0, \uC26C\uC6B4 \uB9D0\uB85C \uC124\uBA85\uD558\uC138\uC694.
+5. \uD658\uC790\uC758 \uAC10\uC815\uC744 \uC874\uC911\uD558\uC138\uC694.`;
 
 export function AISettingsPage() {
   const [activePreset, setActivePreset] = useState('health');
+  const [systemPrompt, setSystemPrompt] = useState(defaultSystemPrompt);
+  const [temperature, setTemperature] = useState(0.2);
+  const [topP, setTopP] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(512);
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>AI 설정</h1>
+      <h1 style={styles.title}>AI {'\uC124\uC815'}</h1>
 
       <div style={styles.grid}>
         {/* 시스템 프롬프트 에디터 */}
-        <GlassCard title="시스템 프롬프트">
+        <GlassCard title={'\uC2DC\uC2A4\uD15C \uD504\uB86C\uD504\uD2B8'}>
           <div style={styles.editorToolbar}>
             <div style={styles.presetTabs}>
               {presets.map((p) => (
@@ -42,43 +60,32 @@ export function AISettingsPage() {
               ))}
             </div>
             <div style={styles.editorActions}>
-              <button style={styles.iconBtn} title="테스트 전송">
+              <button style={styles.iconBtn} title={'\uD14C\uC2A4\uD2B8 \uC804\uC1A1'}>
                 <Send size={16} />
               </button>
-              <button style={styles.iconBtn} title="되돌리기">
+              <button style={styles.iconBtn} title={'\uB418\uB3CC\uB9AC\uAE30'}>
                 <RotateCcw size={16} />
               </button>
-              <button style={{ ...styles.iconBtn, ...styles.saveBtn }} title="저장">
+              <button style={{ ...styles.iconBtn, ...styles.saveBtn }} title={'\uC800\uC7A5'}>
                 <Save size={16} />
-                저장
+                {'\uC800\uC7A5'}
               </button>
             </div>
           </div>
 
           <textarea
             style={styles.editor}
-            defaultValue={`당신은 투석 환자 전용 건강 도우미입니다.
-
-[환자 프로필]
-- IGA 신증 20년차, 혈액투석 주 3회 (월/수/금)
-- 1년 전 투명신세포암 3기 신장 제거술
-- 한쪽 신장 잔존, 소변량 수술 전 대비 약 1/10
-
-[규칙]
-1. 절대 진단하거나 처방하지 마세요.
-2. 투석 환자 식이 기준에 기반해 답변하세요.
-3. 응급 증상 감지 시 즉시 119 안내하세요.
-4. 한국어로 답변하고, 쉬운 말로 설명하세요.
-5. 환자의 감정을 존중하세요.`}
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
             spellCheck={false}
           />
           <div style={styles.editorHint}>
-            변수: {'{{patient_name}}'}, {'{{today_date}}'}, {'{{recent_records}}'}
+            {'\uBCC0\uC218'}: {'{{patient_name}}'}, {'{{today_date}}'}, {'{{recent_records}}'}
           </div>
         </GlassCard>
 
         {/* 컨텍스트 슬롯 */}
-        <GlassCard title="컨텍스트 슬롯">
+        <GlassCard title={'\uCEE8\uD14D\uC2A4\uD2B8 \uC2AC\uB86F'}>
           <div style={styles.slotList}>
             {contextSlots.map((slot) => (
               <div key={slot.name} style={styles.slotItem}>
@@ -91,36 +98,51 @@ export function AISettingsPage() {
                 <div style={styles.slotInfo}>
                   <span style={styles.slotName}>{slot.name}</span>
                   {slot.autoUpdate && (
-                    <span style={styles.autoTag}>자동 업데이트</span>
+                    <span style={styles.autoTag}>{'\uC790\uB3D9 \uC5C5\uB370\uC774\uD2B8'}</span>
                   )}
                 </div>
               </div>
             ))}
             <button style={styles.addSlotBtn}>
               <Plus size={16} />
-              슬롯 추가
+              {'\uC2AC\uB86F \uCD94\uAC00'}
             </button>
           </div>
         </GlassCard>
       </div>
 
       {/* 파라미터 */}
-      <GlassCard title="생성 파라미터">
+      <GlassCard title={'\uC0DD\uC131 \uD30C\uB77C\uBBF8\uD130'}>
         <div style={styles.paramGrid}>
           <div style={styles.paramRow}>
             <span style={styles.paramLabel}>Temperature</span>
-            <input type="range" min="0" max="1" step="0.1" defaultValue="0.2" style={styles.slider} />
-            <span style={styles.paramValue}>0.2</span>
+            <input
+              type="range" min="0" max="1" step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              style={styles.slider}
+            />
+            <span style={styles.paramValue}>{temperature}</span>
           </div>
           <div style={styles.paramRow}>
             <span style={styles.paramLabel}>Top P</span>
-            <input type="range" min="0" max="1" step="0.05" defaultValue="0.9" style={styles.slider} />
-            <span style={styles.paramValue}>0.9</span>
+            <input
+              type="range" min="0" max="1" step="0.05"
+              value={topP}
+              onChange={(e) => setTopP(parseFloat(e.target.value))}
+              style={styles.slider}
+            />
+            <span style={styles.paramValue}>{topP}</span>
           </div>
           <div style={styles.paramRow}>
             <span style={styles.paramLabel}>Max Tokens</span>
-            <input type="range" min="128" max="2048" step="128" defaultValue="512" style={styles.slider} />
-            <span style={styles.paramValue}>512</span>
+            <input
+              type="range" min="128" max="2048" step="128"
+              value={maxTokens}
+              onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+              style={styles.slider}
+            />
+            <span style={styles.paramValue}>{maxTokens}</span>
           </div>
         </div>
       </GlassCard>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TextInput, Pressable, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -10,12 +10,8 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing, radius, touchTarget } from '../theme/spacing';
 import { useChatStore, ChatMessage } from '../stores/chatStore';
-
-const quickQuestions = [
-  '오늘 뭐 먹어도 돼?',
-  '부종이 심해졌어',
-  '잠이 안 와',
-];
+import { useUserStore } from '../stores/userStore';
+import { QUICK_QUESTIONS } from '../config/constants';
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === 'user';
@@ -39,31 +35,19 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { messages, addMessage, isLoading } = useChatStore();
+  const { messages, isLoading, sendMessage, fetchMessages } = useChatStore();
+  const aiServerUrl = useUserStore((s) => s.settings.aiServerUrl);
   const [input, setInput] = useState('');
 
-  const handleSend = (text?: string) => {
+  useEffect(() => {
+    fetchMessages();
+  }, []);
+
+  const handleSend = async (text?: string) => {
     const content = text ?? input.trim();
-    if (!content) return;
-
-    addMessage({
-      id: Date.now().toString(),
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    });
+    if (!content || isLoading) return;
     setInput('');
-
-    // Mock AI 응답 (백엔드 연동 전)
-    setTimeout(() => {
-      addMessage({
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'AI 서버에 연결되면 답변을 드릴게요. 지금은 테스트 모드입니다. 😊',
-        timestamp: new Date().toISOString(),
-      });
-    }, 800);
-
+    await sendMessage(content, aiServerUrl);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
@@ -140,7 +124,7 @@ export function ChatScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.quickRow}
         >
-          {quickQuestions.map((q) => (
+          {QUICK_QUESTIONS.map((q) => (
             <Pressable
               key={q}
               onPress={() => handleSend(q)}

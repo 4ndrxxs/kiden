@@ -8,6 +8,10 @@ import { typography } from '../theme/typography';
 import { spacing, radius, touchTarget } from '../theme/spacing';
 import { GlassCard } from '../components/common';
 import { checkAndApplyUpdate, getCurrentUpdateInfo } from '../utils/updates';
+import { useUserStore } from '../stores/userStore';
+import { DAY_LABELS } from '../config/constants';
+
+const appVersion = require('../../app.json').expo.version;
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -41,11 +45,36 @@ export function SettingsScreen() {
   const [checking, setChecking] = useState(false);
   const updateInfo = getCurrentUpdateInfo();
 
+  const profile = useUserStore((s) => s.profile);
+  const settings = useUserStore((s) => s.settings);
+  const signOut = useUserStore((s) => s.signOut);
+
   const handleCheckUpdate = useCallback(async () => {
     setChecking(true);
     await checkAndApplyUpdate(false);
     setChecking(false);
   }, []);
+
+  // Build profile subtitle from dialysisDays + diagnosis
+  const dialysisDaysLabel = profile?.dialysisDays?.length
+    ? '투석 ' + profile.dialysisDays.map((d) => DAY_LABELS[d]).join('/')
+    : '';
+  const diagnosisLabel = profile?.diagnosis || '';
+  const profileSubtitle = [dialysisDaysLabel, diagnosisLabel].filter(Boolean).join(' · ') || '--';
+
+  // Build dialysis schedule label
+  const dialysisScheduleLabel = profile?.dialysisDays?.length
+    ? '매주 ' + profile.dialysisDays.map((d) => DAY_LABELS[d]).join(', ')
+    : '--';
+
+  // Build ideal body weight label
+  const idealWeightLabel = profile?.idealBodyWeight ? profile.idealBodyWeight + ' kg' : '--';
+
+  // Build nutrient limits label
+  const nutrientLabel = `K ${settings.potassiumLimitMg}mg · P ${settings.phosphorusLimitMg}mg · Na ${settings.sodiumLimitMg}mg`;
+
+  // AI server connection status
+  const aiServerLabel = settings.aiServerUrl ? '연결됨' : '연결 안됨';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -65,8 +94,8 @@ export function SettingsScreen() {
               <Text style={{ fontSize: 28 }}>👤</Text>
             </View>
             <View style={styles.profileText}>
-              <Text style={styles.profileName}>환자 (아버지)</Text>
-              <Text style={styles.profileSub}>투석 월/수/금 · IGA 신증</Text>
+              <Text style={styles.profileName}>{profile?.displayName || '환자'}</Text>
+              <Text style={styles.profileSub}>{profileSubtitle}</Text>
             </View>
           </View>
         </GlassCard>
@@ -77,21 +106,21 @@ export function SettingsScreen() {
           <SettingItem
             icon="calendar-outline"
             title="투석 일정"
-            subtitle="매주 월, 수, 금"
+            subtitle={dialysisScheduleLabel}
             color={colors.status.danger}
           />
           <View style={styles.divider} />
           <SettingItem
             icon="body-outline"
             title="건체중"
-            subtitle="65.5 kg"
+            subtitle={idealWeightLabel}
             color={colors.primary.main}
           />
           <View style={styles.divider} />
           <SettingItem
             icon="nutrition-outline"
             title="영양소 상한 설정"
-            subtitle="K 2000mg · P 1000mg · Na 2000mg"
+            subtitle={nutrientLabel}
             color={colors.secondary.main}
           />
         </GlassCard>
@@ -103,14 +132,14 @@ export function SettingsScreen() {
             icon="notifications-outline"
             title="투석 리마인더"
             color="#4A9BD9"
-            trailing={<Switch value={true} trackColor={{ true: colors.primary.main }} />}
+            trailing={<Switch value={settings.notifyDialysis} trackColor={{ true: colors.primary.main }} />}
           />
           <View style={styles.divider} />
           <SettingItem
             icon="medkit-outline"
             title="약 복용 알림"
             color={colors.status.caution}
-            trailing={<Switch value={true} trackColor={{ true: colors.primary.main }} />}
+            trailing={<Switch value={settings.notifyMedication} trackColor={{ true: colors.primary.main }} />}
           />
         </GlassCard>
 
@@ -120,14 +149,13 @@ export function SettingsScreen() {
           <SettingItem
             icon="server-outline"
             title="AI 서버 연결"
-            subtitle="연결 안됨"
+            subtitle={aiServerLabel}
             color={colors.text.tertiary}
           />
           <View style={styles.divider} />
           <SettingItem
             icon="people-outline"
-            title="가족 초대"
-            subtitle="1명 연결됨"
+            title="가족 관리"
             color={colors.primary.main}
           />
         </GlassCard>
@@ -154,10 +182,19 @@ export function SettingsScreen() {
           <SettingItem
             icon="information-circle-outline"
             title="앱 정보"
-            subtitle={`Kiden v1.0.0 · ${updateInfo.isEmbeddedLaunch ? '기본 번들' : 'OTA 업데이트됨'}`}
+            subtitle={`Kiden v${appVersion} · ${updateInfo.isEmbeddedLaunch ? '기본 번들' : 'OTA 업데이트됨'}`}
             color={colors.text.tertiary}
           />
         </GlassCard>
+
+        {/* 로그아웃 */}
+        <Pressable
+          onPress={signOut}
+          style={({ pressed }) => [styles.logoutBtn, { opacity: pressed ? 0.8 : 1 }]}
+        >
+          <Ionicons name="log-out-outline" size={20} color={colors.status.danger} />
+          <Text style={styles.logoutText}>로그아웃</Text>
+        </Pressable>
 
         <View style={{ height: 120 }} />
       </ScrollView>
@@ -250,5 +287,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.light,
     marginLeft: 36 + spacing.lg + spacing.base,
     marginRight: spacing.lg,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.base,
+    marginTop: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  logoutText: {
+    ...typography.body2Bold,
+    color: colors.status.danger,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,21 +8,13 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing, radius, touchTarget } from '../theme/spacing';
 import { GlassCard, IconButton, SectionHeader } from '../components/common';
+import { useHealthStore } from '../stores/healthStore';
+import { useUserStore } from '../stores/userStore';
+import { DAY_LABELS } from '../config/constants';
 
 type Period = 'week' | 'month';
 
-// 플레이스홀더 차트 데이터
-const weekDays = ['월', '화', '수', '목', '금', '토', '일'];
-const mockWeightData = [66.2, 66.8, 65.5, 66.0, 66.5, 65.8, 66.1];
-const mockBpData = [
-  { sys: 135, dia: 85 },
-  { sys: 140, dia: 88 },
-  { sys: 128, dia: 82 },
-  { sys: 132, dia: 84 },
-  { sys: 138, dia: 86 },
-  { sys: 130, dia: 80 },
-  { sys: 134, dia: 83 },
-];
+const weekDays = DAY_LABELS.slice(1).concat(DAY_LABELS[0]);
 
 function MiniBarChart({ data, max, color }: { data: number[]; max: number; color: string }) {
   const height = 80;
@@ -33,7 +25,7 @@ function MiniBarChart({ data, max, color }: { data: number[]; max: number; color
         return (
           <View key={idx} style={styles.barCol}>
             <View style={[styles.bar, { height: barH, backgroundColor: color }]} />
-            <Text style={styles.barLabel}>{weekDays[idx]}</Text>
+            <Text style={styles.barLabel}>{weekDays[idx] ?? ''}</Text>
           </View>
         );
       })}
@@ -45,6 +37,25 @@ export function ReportScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const [period, setPeriod] = useState<Period>('week');
+
+  const { dailyRecords, fetchRecords } = useHealthStore();
+  const profile = useUserStore((s) => s.profile);
+  const settings = useUserStore((s) => s.settings);
+
+  useEffect(() => {
+    fetchRecords(period === 'week' ? 7 : 30);
+  }, [period]);
+
+  const weightData = dailyRecords.slice(0, 7).map((r) => r.weight ?? 0);
+  const bpData = dailyRecords.slice(0, 7).map((r) => ({ sys: r.systolic ?? 0, dia: r.diastolic ?? 0 }));
+  const avgWeight = weightData.length
+    ? (weightData.reduce((a, b) => a + b, 0) / weightData.length).toFixed(1)
+    : '--';
+  const avgBp = bpData.length
+    ? `${Math.round(bpData.reduce((a, b) => a + b.sys, 0) / bpData.length)}/${Math.round(bpData.reduce((a, b) => a + b.dia, 0) / bpData.length)}`
+    : '--';
+
+  const idealWeightLabel = profile?.idealBodyWeight ? profile.idealBodyWeight + 'kg' : '--';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
@@ -78,13 +89,13 @@ export function ReportScreen() {
         <SectionHeader title="체중 변화" />
         <GlassCard>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartValue}>65.8</Text>
+            <Text style={styles.chartValue}>{avgWeight}</Text>
             <Text style={styles.chartUnit}>kg 평균</Text>
           </View>
-          <MiniBarChart data={mockWeightData} max={70} color={colors.primary.main} />
+          <MiniBarChart data={weightData} max={70} color={colors.primary.main} />
           <View style={styles.baselineBadge}>
             <Ionicons name="flag-outline" size={12} color={colors.text.tertiary} />
-            <Text style={styles.baselineText}>건체중 65.5kg</Text>
+            <Text style={styles.baselineText}>건체중 {idealWeightLabel}</Text>
           </View>
         </GlassCard>
 
@@ -92,11 +103,11 @@ export function ReportScreen() {
         <SectionHeader title="혈압 추이" />
         <GlassCard>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartValue}>134/84</Text>
+            <Text style={styles.chartValue}>{avgBp}</Text>
             <Text style={styles.chartUnit}>mmHg 평균</Text>
           </View>
           <MiniBarChart
-            data={mockBpData.map((d) => d.sys)}
+            data={bpData.map((d) => d.sys)}
             max={180}
             color={colors.secondary.main}
           />
@@ -110,7 +121,9 @@ export function ReportScreen() {
               <Ionicons name="sparkles" size={20} color={colors.primary.main} />
             </View>
             <Text style={styles.aiSummaryText}>
-              AI 서버 연결 후 주간 건강 트렌드 요약이 자동으로 생성됩니다.
+              {settings.aiServerUrl
+                ? 'AI 서버가 연결되어 있습니다. 데이터가 충분히 쌓이면 주간 건강 트렌드 요약이 자동으로 생성됩니다.'
+                : 'AI 서버 연결 후 주간 건강 트렌드 요약이 자동으로 생성됩니다. 설정에서 AI 서버를 연결해주세요.'}
             </Text>
           </View>
         </GlassCard>

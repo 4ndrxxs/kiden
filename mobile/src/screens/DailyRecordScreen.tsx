@@ -40,16 +40,15 @@ export function DailyRecordScreen() {
   // 페이지 단위 (토스 스타일 — 한 화면 3개씩)
   const [page, setPage] = useState(0);
 
-  const handleSave = () => {
-    addDailyRecord({
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      weight: weight ? Number(weight) : undefined,
-      bpSystolic: bpSys ? Number(bpSys) : undefined,
-      bpDiastolic: bpDia ? Number(bpDia) : undefined,
-      mood: mood ?? undefined,
-      fatigue: fatigue ?? undefined,
-      memo: memo || undefined,
+  const handleSave = async () => {
+    await addDailyRecord({
+      recordedAt: new Date().toISOString().split('T')[0],
+      weight: weight ? Number(weight) : null,
+      systolic: bpSys ? Number(bpSys) : null,
+      diastolic: bpDia ? Number(bpDia) : null,
+      mood: mood,
+      fatigue: fatigue,
+      memo: memo,
     });
     nav.goBack();
   };

@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Download } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
+import { config } from '../config';
 
 type LogLevel = 'all' | 'info' | 'warn' | 'error';
 
-const mockLogs = [
-  { id: 1, time: '14:32:01', level: 'info' as const, message: '[proxy] 서버 시작 — :9001', source: 'system' },
-  { id: 2, time: '14:32:03', level: 'info' as const, message: '[vllm] 모델 로딩 중... google/gemma-4-12b', source: 'system' },
-  { id: 3, time: '14:32:45', level: 'info' as const, message: '[vllm] 모델 로드 완료 (42s)', source: 'system' },
-  { id: 4, time: '14:35:12', level: 'info' as const, message: '[req] POST /v1/chat/completions — 200 — 1.2s — 128 tokens', source: 'request' },
-  { id: 5, time: '14:36:08', level: 'warn' as const, message: '[proxy] 금지어 감지: "mg 복용" → 응답 필터링됨', source: 'security' },
-  { id: 6, time: '14:40:22', level: 'error' as const, message: '[vllm] CUDA OOM — max_model_len 축소 필요', source: 'system' },
-];
+interface LogEntry {
+  id: number;
+  time: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  source: string;
+}
 
 const levelColors: Record<string, string> = {
   info: 'var(--primary)',
@@ -22,8 +22,39 @@ const levelColors: Record<string, string> = {
 export function LogsPage() {
   const [filter, setFilter] = useState<LogLevel>('all');
   const [search, setSearch] = useState('');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  const filtered = mockLogs.filter(
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch(`${config.vllmBaseUrl}/logs`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setLogs(data.map((entry: Record<string, unknown>, i: number) => ({
+              id: (entry.id as number) ?? i + 1,
+              time: (entry.time as string) ?? '',
+              level: (entry.level as 'info' | 'warn' | 'error') ?? 'info',
+              message: (entry.message as string) ?? '',
+              source: (entry.source as string) ?? 'system',
+            })));
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setLogs([]);
+        }
+      }
+    }
+
+    fetchLogs();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const filtered = logs.filter(
     (log) =>
       (filter === 'all' || log.level === filter) &&
       (!search || log.message.toLowerCase().includes(search.toLowerCase())),
@@ -31,7 +62,7 @@ export function LogsPage() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>로그</h1>
+      <h1 style={styles.title}>{'\uB85C\uADF8'}</h1>
 
       {/* 필터 바 */}
       <div style={styles.toolbar}>
@@ -39,7 +70,7 @@ export function LogsPage() {
           <Search size={16} color="var(--text-tertiary)" />
           <input
             type="text"
-            placeholder="키워드 검색..."
+            placeholder={'\uD0A4\uC6CC\uB4DC \uAC80\uC0C9...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={styles.searchInput}
@@ -55,7 +86,7 @@ export function LogsPage() {
                 ...(filter === lvl ? styles.filterBtnActive : {}),
               }}
             >
-              {lvl === 'all' ? '전체' : lvl.toUpperCase()}
+              {lvl === 'all' ? '\uC804\uCCB4' : lvl.toUpperCase()}
             </button>
           ))}
         </div>
@@ -78,7 +109,7 @@ export function LogsPage() {
             </div>
           ))}
           {filtered.length === 0 && (
-            <div style={styles.empty}>일치하는 로그가 없습니다</div>
+            <div style={styles.empty}>{'\uC77C\uCE58\uD558\uB294 \uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</div>
           )}
         </div>
       </GlassCard>

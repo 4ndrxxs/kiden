@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,8 @@ import { typography } from '../theme/typography';
 import { spacing, radius } from '../theme/spacing';
 import { GlassCard, ProgressGauge, QuickActionCard, SectionHeader } from '../components/common';
 import { useHealthStore } from '../stores/healthStore';
+import { useUserStore } from '../stores/userStore';
+import { MOOD_EMOJIS } from '../config/constants';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -23,15 +25,14 @@ function getGreeting(): string {
   return '편안한 저녁이에요';
 }
 
-function isDialysisDay(): boolean {
+function isDialysisDay(dialysisDays: number[]): boolean {
   const day = new Date().getDay(); // 0=Sun
-  return [1, 3, 5].includes(day); // 월,수,금
+  return dialysisDays.includes(day);
 }
 
-function getDday(): string {
+function getDday(dialysisDays: number[]): string {
   const now = new Date();
   const day = now.getDay();
-  const dialysisDays = [1, 3, 5];
   for (let i = 0; i <= 6; i++) {
     const check = (day + i) % 7;
     if (dialysisDays.includes(check)) {
@@ -46,12 +47,18 @@ function getDday(): string {
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation<Nav>();
-  const { getTodayWater, getTodayNutrients, getLatestRecord } = useHealthStore();
+  const { fetchTodayData, getTodayWater, getTodayNutrients, getLatestRecord } = useHealthStore();
+  const { profile, settings } = useUserStore();
 
+  const dialysisDays = profile?.dialysisDays ?? [1, 3, 5];
   const todayWater = getTodayWater();
   const nutrients = getTodayNutrients();
   const latest = getLatestRecord();
-  const dialysisToday = isDialysisDay();
+  const dialysisToday = isDialysisDay(dialysisDays);
+
+  useEffect(() => {
+    fetchTodayData();
+  }, []);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -63,7 +70,7 @@ export function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.headerName}>아버지 💙</Text>
+            <Text style={styles.headerName}>{profile?.displayName || '환자'}</Text>
           </View>
           <View style={styles.ddayBadge}>
             <Ionicons
@@ -75,7 +82,7 @@ export function HomeScreen() {
               styles.ddayText,
               dialysisToday && { color: colors.status.danger },
             ]}>
-              {getDday()}
+              {getDday(dialysisDays)}
             </Text>
           </View>
         </View>
@@ -93,21 +100,21 @@ export function HomeScreen() {
             <SummaryItem
               icon="fitness-outline"
               label="체중"
-              value={latest?.weight ? `${latest.weight}kg` : '--'}
+              value={latest?.weight != null ? `${latest.weight}kg` : '--'}
             />
             <SummaryItem
               icon="heart-outline"
               label="혈압"
               value={
-                latest?.bpSystolic
-                  ? `${latest.bpSystolic}/${latest.bpDiastolic}`
+                latest?.systolic != null
+                  ? `${latest.systolic}/${latest.diastolic}`
                   : '--'
               }
             />
             <SummaryItem
               icon="happy-outline"
               label="기분"
-              value={latest?.mood ? ['😫','😞','😐','🙂','😊'][latest.mood - 1] : '--'}
+              value={latest?.mood ? MOOD_EMOJIS[latest.mood - 1] : '--'}
               isEmoji
             />
           </View>
@@ -117,13 +124,13 @@ export function HomeScreen() {
         <SectionHeader title="오늘의 섭취" />
         <View style={styles.gaugeSection}>
           <GlassCard>
-            <ProgressGauge icon="💧" label="수분" current={todayWater} max={700} unit="mL" />
+            <ProgressGauge icon="💧" label="수분" current={todayWater} max={settings.waterLimitMl} unit="mL" />
           </GlassCard>
           <GlassCard>
             <View style={styles.gaugeStack}>
-              <ProgressGauge icon="🍌" label="칼륨" current={nutrients.potassium} max={2000} unit="mg" />
-              <ProgressGauge icon="🦴" label="인" current={nutrients.phosphorus} max={1000} unit="mg" />
-              <ProgressGauge icon="🧂" label="나트륨" current={nutrients.sodium} max={2000} unit="mg" />
+              <ProgressGauge icon="🍌" label="칼륨" current={nutrients.potassium} max={settings.potassiumLimitMg} unit="mg" />
+              <ProgressGauge icon="🦴" label="인" current={nutrients.phosphorus} max={settings.phosphorusLimitMg} unit="mg" />
+              <ProgressGauge icon="🧂" label="나트륨" current={nutrients.sodium} max={settings.sodiumLimitMg} unit="mg" />
             </View>
           </GlassCard>
         </View>

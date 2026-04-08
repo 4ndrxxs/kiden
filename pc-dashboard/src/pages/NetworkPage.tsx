@@ -1,67 +1,107 @@
+import { useState, useEffect } from 'react';
 import { Shield, Key, Plus, Trash2, Wifi, WifiOff, Globe } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
+import { config } from '../config';
 
-const apiKeys = [
-  { name: 'android-app', key: 'kid_****_a1b2', active: true, lastUsed: '2분 전' },
-  { name: 'test', key: 'kid_****_x9y8', active: true, lastUsed: '사용 안 함' },
-];
-
-const allowedIps = ['192.168.0.0/24 (LAN)'];
+interface ApiKeyEntry {
+  name: string;
+  key: string;
+  active: boolean;
+  lastUsed: string;
+}
 
 export function NetworkPage() {
+  const [apiKeys, setApiKeys] = useState<ApiKeyEntry[]>([]);
+  const [allowedIps, setAllowedIps] = useState<string[]>([]);
+  const [proxyStatus, setProxyStatus] = useState<'active' | 'waiting'>('waiting');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchNetworkInfo() {
+      try {
+        const res = await fetch(`${config.vllmBaseUrl}/network`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.api_keys)) {
+            setApiKeys(data.api_keys);
+          }
+          if (Array.isArray(data.allowed_ips)) {
+            setAllowedIps(data.allowed_ips);
+          }
+          if (data.proxy_status === 'active') {
+            setProxyStatus('active');
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setApiKeys([]);
+          setAllowedIps([]);
+          setProxyStatus('waiting');
+        }
+      }
+    }
+
+    fetchNetworkInfo();
+
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>네트워크</h1>
+      <h1 style={styles.title}>{'\uB124\uD2B8\uC6CC\uD06C'}</h1>
 
       <div style={styles.grid2}>
         {/* WireGuard 터널 */}
-        <GlassCard title="WireGuard 터널">
+        <GlassCard title="WireGuard \uD130\uB110">
           <div style={styles.tunnelStatus}>
             <WifiOff size={32} color="var(--text-disabled)" />
-            <span style={styles.tunnelLabel}>비활성</span>
+            <span style={styles.tunnelLabel}>{'\uBE44\uD65C\uC131'}</span>
           </div>
           <button style={styles.toggleTunnelBtn}>
             <Wifi size={16} />
-            터널 활성화
+            {'\uD130\uB110 \uD65C\uC131\uD654'}
           </button>
           <div style={styles.tunnelMeta}>
             <div style={styles.metaRow}>
-              <span style={styles.metaLabel}>설정 파일</span>
+              <span style={styles.metaLabel}>{'\uC124\uC815 \uD30C\uC77C'}</span>
               <span style={styles.metaValue}>/etc/wireguard/wg0.conf</span>
             </div>
             <div style={styles.metaRow}>
-              <span style={styles.metaLabel}>외부 접근</span>
-              <span style={{ ...styles.metaValue, color: 'var(--danger)' }}>차단됨</span>
+              <span style={styles.metaLabel}>{'\uC678\uBD80 \uC811\uADFC'}</span>
+              <span style={{ ...styles.metaValue, color: 'var(--danger)' }}>{'\uCC28\uB2E8\uB428'}</span>
             </div>
           </div>
         </GlassCard>
 
         {/* 연결 상태 */}
-        <GlassCard title="연결 상태">
+        <GlassCard title={'\uC5F0\uACB0 \uC0C1\uD0DC'}>
           <div style={styles.connectionList}>
             <div style={styles.connectionItem}>
               <Globe size={16} color="var(--text-tertiary)" />
-              <span style={styles.connLabel}>프록시 서버</span>
-              <span style={styles.connPort}>:9001</span>
-              <span style={{ ...styles.connStatus, color: 'var(--text-disabled)' }}>대기</span>
+              <span style={styles.connLabel}>{'\uD504\uB85D\uC2DC \uC11C\uBC84'}</span>
+              <span style={styles.connPort}>:{config.proxyPort}</span>
+              <span style={{ ...styles.connStatus, color: proxyStatus === 'active' ? 'var(--safe)' : 'var(--text-disabled)' }}>
+                {proxyStatus === 'active' ? '\uD65C\uC131' : '\uB300\uAE30'}
+              </span>
             </div>
             <div style={styles.connectionItem}>
               <Globe size={16} color="var(--text-tertiary)" />
-              <span style={styles.connLabel}>대시보드</span>
-              <span style={styles.connPort}>:9000</span>
-              <span style={{ ...styles.connStatus, color: 'var(--safe)' }}>활성</span>
+              <span style={styles.connLabel}>{'\uB300\uC2DC\uBCF4\uB4DC'}</span>
+              <span style={styles.connPort}>:{config.dashboardPort}</span>
+              <span style={{ ...styles.connStatus, color: 'var(--safe)' }}>{'\uD65C\uC131'}</span>
             </div>
             <div style={styles.divider} />
             <div style={styles.connectionItem}>
-              <span style={styles.connLabel}>Android 앱</span>
-              <span style={{ ...styles.connStatus, color: 'var(--text-disabled)' }}>미연결</span>
+              <span style={styles.connLabel}>Android {'\uC571'}</span>
+              <span style={{ ...styles.connStatus, color: 'var(--text-disabled)' }}>{'\uBBF8\uC5F0\uACB0'}</span>
             </div>
           </div>
         </GlassCard>
       </div>
 
       {/* API 키 관리 */}
-      <GlassCard title="API 키">
+      <GlassCard title="API \uD0A4">
         <div style={styles.keyList}>
           {apiKeys.map((k) => (
             <div key={k.name} style={styles.keyRow}>
@@ -74,14 +114,17 @@ export function NetworkPage() {
               <button style={styles.deleteBtn}><Trash2 size={14} /></button>
             </div>
           ))}
+          {apiKeys.length === 0 && (
+            <div style={styles.emptyHint}>{'\uB4F1\uB85D\uB41C API \uD0A4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</div>
+          )}
           <button style={styles.addBtn}>
-            <Plus size={14} /> 키 생성
+            <Plus size={14} /> {'\uD0A4 \uC0DD\uC131'}
           </button>
         </div>
       </GlassCard>
 
       {/* IP 화이트리스트 */}
-      <GlassCard title="접근 허용 IP">
+      <GlassCard title={'\uC811\uADFC \uD5C8\uC6A9 IP'}>
         <div style={styles.ipList}>
           {allowedIps.map((ip) => (
             <div key={ip} style={styles.ipRow}>
@@ -90,8 +133,11 @@ export function NetworkPage() {
               <button style={styles.deleteBtn}><Trash2 size={14} /></button>
             </div>
           ))}
+          {allowedIps.length === 0 && (
+            <div style={styles.emptyHint}>{'\uB4F1\uB85D\uB41C IP\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4'}</div>
+          )}
           <button style={styles.addBtn}>
-            <Plus size={14} /> IP 추가
+            <Plus size={14} /> IP {'\uCD94\uAC00'}
           </button>
         </div>
       </GlassCard>
@@ -138,6 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px dashed var(--border)', background: 'transparent',
     color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
   },
+  emptyHint: { padding: 16, textAlign: 'center' as const, color: 'var(--text-tertiary)', fontSize: 13 },
   ipList: { display: 'flex', flexDirection: 'column', gap: 8 },
   ipRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' },
   ipValue: { fontSize: 13, color: 'var(--text-primary)', flex: 1, fontFamily: 'monospace' },

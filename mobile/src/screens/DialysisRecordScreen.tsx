@@ -8,6 +8,7 @@ import { typography } from '../theme/typography';
 import { spacing, radius } from '../theme/spacing';
 import { GlassCard, GradientButton, LargeInput, IconButton, SectionHeader } from '../components/common';
 import { useHealthStore } from '../stores/healthStore';
+import { ULTRAFILTRATION_WARNING_THRESHOLD } from '../config/constants';
 
 export function DialysisRecordScreen() {
   const insets = useSafeAreaInsets();
@@ -22,14 +23,12 @@ export function DialysisRecordScreen() {
     ? (Number(preWeight) - Number(postWeight)).toFixed(1)
     : null;
 
-  const handleSave = () => {
-    addDialysisRecord({
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      preWeight: preWeight ? Number(preWeight) : undefined,
-      postWeight: postWeight ? Number(postWeight) : undefined,
-      ultrafiltration: uf ? Number(uf) : undefined,
-      memo: memo || undefined,
+  const handleSave = async () => {
+    await addDialysisRecord({
+      recordedAt: new Date().toISOString().split('T')[0],
+      preWeight: preWeight ? Number(preWeight) : null,
+      postWeight: postWeight ? Number(postWeight) : null,
+      memo: memo,
     });
     nav.goBack();
   };
@@ -83,9 +82,9 @@ export function DialysisRecordScreen() {
                 <Text style={styles.ufValue}>{uf}</Text>
                 <Text style={styles.ufUnit}>L</Text>
               </View>
-              {Number(uf) > 3 && (
+              {Number(uf) > ULTRAFILTRATION_WARNING_THRESHOLD && (
                 <View style={styles.warningBadge}>
-                  <Text style={styles.warningText}>⚠️ 제수량이 3L을 초과합니다</Text>
+                  <Text style={styles.warningText}>⚠️ 제수량이 {ULTRAFILTRATION_WARNING_THRESHOLD}L을 초과합니다</Text>
                 </View>
               )}
             </View>

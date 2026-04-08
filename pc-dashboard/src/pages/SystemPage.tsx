@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Lock, Database, Bell, FolderArchive, Info } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
+import { config } from '../config';
+
+declare const __APP_VERSION__: string;
 
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -11,26 +15,53 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
 }
 
 export function SystemPage() {
+  const appVersion = `Kiden Server Console v${__APP_VERSION__}`;
+  const [systemInfo, setSystemInfo] = useState('--');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSystemInfo() {
+      try {
+        const res = await fetch(`${config.vllmBaseUrl}/system`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          if (data.info) {
+            setSystemInfo(data.info);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSystemInfo('--');
+        }
+      }
+    }
+
+    fetchSystemInfo();
+
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>시스템 설정</h1>
+      <h1 style={styles.title}>{'\uC2DC\uC2A4\uD15C \uC124\uC815'}</h1>
 
       <div style={styles.grid2}>
         {/* 보안 */}
         <GlassCard>
           <div style={styles.sectionHeader}>
             <Lock size={18} color="var(--primary)" />
-            <h3 style={styles.sectionTitle}>보안</h3>
+            <h3 style={styles.sectionTitle}>{'\uBCF4\uC548'}</h3>
           </div>
           <div style={styles.settingList}>
-            <SettingRow label="대시보드 비밀번호">
-              <button style={styles.changeBtn}>변경</button>
+            <SettingRow label={'\uB300\uC2DC\uBCF4\uB4DC \uBE44\uBC00\uBC88\uD638'}>
+              <button style={styles.changeBtn}>{'\uBCC0\uACBD'}</button>
             </SettingRow>
-            <SettingRow label="세션 타임아웃">
+            <SettingRow label={'\uC138\uC158 \uD0C0\uC784\uC544\uC6C3'}>
               <select style={styles.select}>
-                <option>30분</option>
-                <option>1시간</option>
-                <option>2시간</option>
+                <option>30{'\uBD84'}</option>
+                <option>1{'\uC2DC\uAC04'}</option>
+                <option>2{'\uC2DC\uAC04'}</option>
               </select>
             </SettingRow>
           </div>
@@ -40,19 +71,19 @@ export function SystemPage() {
         <GlassCard>
           <div style={styles.sectionHeader}>
             <Bell size={18} color="var(--caution)" />
-            <h3 style={styles.sectionTitle}>알림</h3>
+            <h3 style={styles.sectionTitle}>{'\uC54C\uB9BC'}</h3>
           </div>
           <div style={styles.settingList}>
-            <SettingRow label="에러 알림">
+            <SettingRow label={'\uC5D0\uB7EC \uC54C\uB9BC'}>
               <label style={styles.toggle}>
                 <input type="checkbox" defaultChecked />
-                <span>카카오톡</span>
+                <span>{'\uCE74\uCE74\uC624\uD1A1'}</span>
               </label>
             </SettingRow>
-            <SettingRow label="vLLM 크래시 알림">
+            <SettingRow label="vLLM \uD06C\uB798\uC2DC \uC54C\uB9BC">
               <label style={styles.toggle}>
                 <input type="checkbox" defaultChecked />
-                <span>활성</span>
+                <span>{'\uD65C\uC131'}</span>
               </label>
             </SettingRow>
           </div>
@@ -64,30 +95,30 @@ export function SystemPage() {
         <GlassCard>
           <div style={styles.sectionHeader}>
             <Database size={18} color="var(--safe)" />
-            <h3 style={styles.sectionTitle}>데이터 보존</h3>
+            <h3 style={styles.sectionTitle}>{'\uB370\uC774\uD130 \uBCF4\uC874'}</h3>
           </div>
           <div style={styles.settingList}>
-            <SettingRow label="요청 로그">
+            <SettingRow label={'\uC694\uCCAD \uB85C\uADF8'}>
               <select style={styles.select}>
-                <option>90일</option>
-                <option>180일</option>
-                <option>365일</option>
+                <option>90{'\uC77C'}</option>
+                <option>180{'\uC77C'}</option>
+                <option>365{'\uC77C'}</option>
               </select>
             </SettingRow>
-            <SettingRow label="시스템 로그">
+            <SettingRow label={'\uC2DC\uC2A4\uD15C \uB85C\uADF8'}>
               <select style={styles.select}>
-                <option>90일</option>
-                <option>180일</option>
+                <option>90{'\uC77C'}</option>
+                <option>180{'\uC77C'}</option>
               </select>
             </SettingRow>
-            <SettingRow label="GPU 메트릭">
+            <SettingRow label="GPU \uBA54\uD2B8\uB9AD">
               <select style={styles.select}>
-                <option>30일</option>
-                <option>90일</option>
+                <option>30{'\uC77C'}</option>
+                <option>90{'\uC77C'}</option>
               </select>
             </SettingRow>
-            <SettingRow label="프롬프트 히스토리">
-              <span style={styles.badge}>영구 보존</span>
+            <SettingRow label={'\uD504\uB86C\uD504\uD2B8 \uD788\uC2A4\uD1A0\uB9AC'}>
+              <span style={styles.badge}>{'\uC601\uAD6C \uBCF4\uC874'}</span>
             </SettingRow>
           </div>
         </GlassCard>
@@ -96,22 +127,26 @@ export function SystemPage() {
         <GlassCard>
           <div style={styles.sectionHeader}>
             <FolderArchive size={18} color="var(--danger)" />
-            <h3 style={styles.sectionTitle}>연동 & 백업</h3>
+            <h3 style={styles.sectionTitle}>{'\uC5F0\uB3D9'} & {'\uBC31\uC5C5'}</h3>
           </div>
           <div style={styles.settingList}>
             <SettingRow label="Supabase URL">
-              <input type="text" placeholder="https://xxx.supabase.co" style={styles.textInput} />
+              <input
+                type="text"
+                defaultValue={config.supabaseUrl}
+                style={styles.textInput}
+              />
             </SettingRow>
-            <SettingRow label="자동 Pull 간격">
+            <SettingRow label={'\uC790\uB3D9 Pull \uAC04\uACA9'}>
               <select style={styles.select}>
-                <option>1시간</option>
-                <option>30분</option>
-                <option>6시간</option>
+                <option>1{'\uC2DC\uAC04'}</option>
+                <option>30{'\uBD84'}</option>
+                <option>6{'\uC2DC\uAC04'}</option>
               </select>
             </SettingRow>
             <div style={styles.btnRow}>
-              <button style={styles.backupBtn}>설정 백업</button>
-              <button style={styles.restoreBtn}>복원</button>
+              <button style={styles.backupBtn}>{'\uC124\uC815 \uBC31\uC5C5'}</button>
+              <button style={styles.restoreBtn}>{'\uBCF5\uC6D0'}</button>
             </div>
           </div>
         </GlassCard>
@@ -121,8 +156,8 @@ export function SystemPage() {
       <GlassCard>
         <div style={styles.infoRow}>
           <Info size={16} color="var(--text-tertiary)" />
-          <span style={styles.infoText}>Kiden Server Console v1.0.0</span>
-          <span style={styles.infoSub}>FastAPI + vLLM · RTX 5080 · Python 3.11</span>
+          <span style={styles.infoText}>{appVersion}</span>
+          <span style={styles.infoSub}>{systemInfo}</span>
         </div>
       </GlassCard>
     </div>

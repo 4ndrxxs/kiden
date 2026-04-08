@@ -10,7 +10,9 @@ interface LargeInputProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   unit?: string;
-  keyboardType?: 'default' | 'numeric' | 'decimal-pad';
+  keyboardType?: 'default' | 'numeric' | 'decimal-pad' | 'email-address';
+  secureTextEntry?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   style?: ViewStyle;
 }
 
@@ -21,6 +23,8 @@ export function LargeInput({
   placeholder,
   unit,
   keyboardType = 'default',
+  secureTextEntry,
+  autoCapitalize,
   style,
 }: LargeInputProps) {
   const [focused, setFocused] = useState(false);
@@ -36,6 +40,8 @@ export function LargeInput({
           placeholder={placeholder}
           placeholderTextColor={colors.text.disabled}
           keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry}
+          autoCapitalize={autoCapitalize}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
