@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "키든",
+    "slug": "kiden",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "kiden",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F8FA"
+    },
+    "android": {
+      "package": "com.kiden.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F8FA"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.kiden.app",
+      "supportsTablet": true
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 5000,
+      "url": "http://192.168.0.10:9001/updates/manifest",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "updateServerUrl": "http://192.168.0.10:9001",
+      "eas": {
+        "projectId": "local-kiden"
+      }
+    },
+    "plugins": [
+      "expo-updates",
+      "expo-font"
+    ]
+  }
+}
