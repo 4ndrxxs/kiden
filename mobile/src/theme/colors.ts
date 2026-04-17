@@ -1,67 +1,70 @@
 export const colors = {
-  // ── 기본 ──
   white: '#FFFFFF',
-  background: '#F7F8FA',
+  background: '#F6F7FF',
   surface: '#FFFFFF',
-  surfaceElevated: 'rgba(255, 255, 255, 0.85)',
+  surfaceMuted: '#F2F4FF',
+  pageEdge: '#ECEEFF',
+  overlay: 'rgba(30, 42, 94, 0.16)',
 
-  // ── 텍스트 ──
   text: {
-    primary: '#191F28',
-    secondary: '#4E5968',
-    tertiary: '#8B95A1',
-    disabled: '#B0B8C1',
+    primary: '#1E2452',
+    secondary: '#5F6790',
+    tertiary: '#8E96BC',
+    disabled: '#BCC2DE',
     inverse: '#FFFFFF',
   },
 
-  // ── 브랜드 (틸 블루 기반) ──
   primary: {
-    main: '#2B8A8E',
-    light: '#4DB0B4',
-    dark: '#1A6B6F',
-    gradient: ['#2B8A8E', '#4DB0B4'] as const,
-    bg: 'rgba(43, 138, 142, 0.08)',
+    main: '#5D6BFF',
+    dark: '#4655E7',
+    light: '#8794FF',
+    gradient: ['#5D7CFF', '#D37DFF'] as const,
+    softGradient: ['#EEF1FF', '#F9EEFF'] as const,
+    bg: '#EEF1FF',
   },
 
-  // ── 보조 (산호색) ──
   secondary: {
-    main: '#E8836B',
-    light: '#F2A594',
-    gradient: ['#E8836B', '#F2A594'] as const,
-    bg: 'rgba(232, 131, 107, 0.08)',
+    main: '#C77DFF',
+    light: '#E6C7FF',
+    gradient: ['#9A8CFF', '#F7A2FF'] as const,
+    bg: '#F7EEFF',
   },
 
-  // ── 상태 ──
+  accent: {
+    blue: '#6A7DFF',
+    green: '#61C48C',
+    red: '#FF718C',
+    orange: '#FFB367',
+    aqua: '#67B9FF',
+  },
+
   status: {
-    safe: '#2DC76D',
-    safeGradient: ['#2DC76D', '#5FE096'] as const,
-    safeBg: 'rgba(45, 199, 109, 0.08)',
-
-    caution: '#F5B942',
-    cautionGradient: ['#F5B942', '#FFCE6B'] as const,
-    cautionBg: 'rgba(245, 185, 66, 0.08)',
-
-    danger: '#E85D5D',
-    dangerGradient: ['#E85D5D', '#F28B8B'] as const,
-    dangerBg: 'rgba(232, 93, 93, 0.08)',
+    safe: '#23B26D',
+    safeGradient: ['#23B26D', '#61C48C'] as const,
+    safeBg: '#E9FAF1',
+    caution: '#FFB020',
+    cautionGradient: ['#FFB020', '#FFD36B'] as const,
+    cautionBg: '#FFF4DE',
+    danger: '#FF5D79',
+    dangerGradient: ['#FF5D79', '#FF8BA2'] as const,
+    dangerBg: '#FFE8EE',
   },
 
-  // ── 글래스모피즘 ──
+  border: {
+    light: '#EDF0FB',
+    default: '#E2E6F6',
+    dark: '#CAD0E8',
+  },
+
+  shadow: {
+    card: 'rgba(83, 95, 172, 0.12)',
+    strong: 'rgba(69, 84, 167, 0.18)',
+  },
+
   glass: {
     background: 'rgba(255, 255, 255, 0.72)',
-    border: 'rgba(255, 255, 255, 0.4)',
-    shadow: 'rgba(0, 0, 0, 0.04)',
+    border: 'rgba(255, 255, 255, 0.54)',
   },
-
-  // ── 보더 & 디바이더 ──
-  border: {
-    light: '#F2F4F6',
-    default: '#E5E8EB',
-    dark: '#D1D6DB',
-  },
-
-  // ── 오버레이 ──
-  overlay: 'rgba(0, 0, 0, 0.4)',
 } as const;
 
 export type Colors = typeof colors;

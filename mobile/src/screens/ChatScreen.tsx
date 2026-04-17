@@ -1,33 +1,53 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet, View, Text, ScrollView, TextInput, Pressable, KeyboardAvoidingView, Platform,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
+import { radius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { spacing, radius, touchTarget } from '../theme/spacing';
-import { useChatStore, ChatMessage } from '../stores/chatStore';
+import { getQuickPrompts } from '../design/data';
+import { EmptyState, SurfaceCard } from '../design/system';
+import { useChatStore, type ChatMessage } from '../stores/chatStore';
 import { useUserStore } from '../stores/userStore';
-import { QUICK_QUESTIONS } from '../config/constants';
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
-  const isUser = msg.role === 'user';
+function MessageBubble({ message }: { message: ChatMessage }) {
+  const isUser = message.role === 'user';
+
+  if (isUser) {
+    return (
+      <View style={styles.userRow}>
+        <LinearGradient
+          colors={[...colors.primary.gradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.userBubble}
+        >
+          <Text style={styles.userBubbleText}>{message.content}</Text>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
-      {!isUser && (
-        <View style={styles.avatar}>
-          <Text style={styles.avatarEmoji}>🤖</Text>
-        </View>
-      )}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
-        <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>
-          {msg.content}
-        </Text>
+    <View style={styles.assistantRow}>
+      <View style={styles.assistantIcon}>
+        <Ionicons name="sparkles" size={14} color={colors.primary.main} />
       </View>
+      <SurfaceCard style={styles.assistantBubble}>
+        <Text style={styles.assistantBubbleText}>{message.content}</Text>
+      </SurfaceCard>
     </View>
   );
 }
@@ -35,132 +55,131 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 export function ChatScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { messages, isLoading, sendMessage, fetchMessages } = useChatStore();
-  const aiServerUrl = useUserStore((s) => s.settings.aiServerUrl);
+  const { messages, fetchMessages, isLoading, sendMessage } = useChatStore();
+  const aiServerUrl = useUserStore((state) => state.settings.aiServerUrl);
   const [input, setInput] = useState('');
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [fetchMessages]);
 
-  const handleSend = async (text?: string) => {
-    const content = text ?? input.trim();
-    if (!content || isLoading) return;
+  const quickPrompts = getQuickPrompts();
+  const isConnected = aiServerUrl.trim().length > 0;
+  const hasMessages = messages.length > 0;
+
+  const handleSend = async (preset?: string) => {
+    const text = (preset ?? input).trim();
+    if (!text || isLoading) return;
+
+    if (!isConnected) {
+      Alert.alert('AI 서버 미연결', '설정에서 AI 서버 주소를 먼저 등록해 주세요.');
+      return;
+    }
+
     setInput('');
-    await sendMessage(content, aiServerUrl);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    await sendMessage(text, aiServerUrl);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerAvatar}>
-            <Text style={{ fontSize: 20 }}>🤖</Text>
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>키든 AI</Text>
-            <View style={styles.statusRow}>
-              <View style={[
-                styles.statusDot,
-                { backgroundColor: colors.status.safe },
-              ]} />
-              <Text style={styles.statusText}>대기 중</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* 메시지 영역 */}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View
+        style={[
+          styles.inner,
+          {
+            paddingTop: insets.top + spacing.base,
+            paddingBottom: Math.max(insets.bottom, spacing.base),
+          },
+        ]}
       >
-        {messages.length === 0 && (
-          <View style={styles.emptyState}>
-            <LinearGradient
-              colors={[...colors.primary.gradient] as [string, string, ...string[]]}
-              style={styles.emptyIcon}
-            >
-              <Ionicons name="chatbubble-ellipses" size={32} color={colors.white} />
-            </LinearGradient>
-            <Text style={styles.emptyTitle}>건강 상담을 시작하세요</Text>
-            <Text style={styles.emptySubtitle}>
-              식단, 증상, 생활 습관에 대해{'\n'}궁금한 것을 물어보세요
+        <View style={styles.header}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>키든 AI</Text>
+            <Text style={styles.headerSubtitle}>투석 환자의 건강한 일상을 함께 관리하는 AI 상담사</Text>
+          </View>
+          <View style={[styles.onlineBadge, !isConnected && styles.offlineBadge]}>
+            <View style={[styles.onlineDot, !isConnected && styles.offlineDot]} />
+            <Text style={[styles.onlineText, !isConnected && styles.offlineText]}>
+              {isConnected ? '온라인' : '미연결'}
             </Text>
           </View>
-        )}
+        </View>
 
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} />
-        ))}
-
-        {isLoading && (
-          <View style={[styles.bubbleRow]}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>🤖</Text>
-            </View>
-            <View style={[styles.bubble, styles.bubbleAI]}>
-              <Text style={styles.typingDots}>●●●</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={{ height: 16 }} />
-      </ScrollView>
-
-      {/* 빠른 질문 */}
-      {messages.length === 0 && (
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickRow}
+          ref={scrollRef}
+          style={styles.messageList}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.messageContent,
+            !hasMessages && styles.messageContentEmpty,
+          ]}
+          onContentSizeChange={() => {
+            if (hasMessages) scrollRef.current?.scrollToEnd({ animated: true });
+          }}
         >
-          {QUICK_QUESTIONS.map((q) => (
-            <Pressable
-              key={q}
-              onPress={() => handleSend(q)}
-              style={({ pressed }) => [
-                styles.quickBtn,
-                { opacity: pressed ? 0.8 : 1 },
-              ]}
-            >
-              <Text style={styles.quickText}>{q}</Text>
-            </Pressable>
-          ))}
+          {hasMessages ? (
+            messages.map((message) => <MessageBubble key={message.id} message={message} />)
+          ) : (
+            <EmptyState
+              icon="sparkles-outline"
+              title={isConnected ? '무엇을 도와드릴까요?' : 'AI 서버에 연결해 주세요'}
+              description={
+                isConnected
+                  ? '투석·식단·증상에 대해 편하게 물어보세요.\n기록 데이터를 참고해서 답변해 드려요.'
+                  : '설정 > AI 서버 연결에서 주소를 등록하면 AI와 대화할 수 있어요.'
+              }
+            />
+          )}
+          {isLoading ? (
+            <View style={styles.assistantRow}>
+              <View style={styles.assistantIcon}>
+                <Ionicons name="sparkles" size={14} color={colors.primary.main} />
+              </View>
+              <SurfaceCard style={styles.assistantBubble}>
+                <Text style={styles.assistantBubbleText}>답변을 준비하고 있어요...</Text>
+              </SurfaceCard>
+            </View>
+          ) : null}
         </ScrollView>
-      )}
 
-      {/* 입력 바 */}
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-        <View style={styles.inputContainer}>
+        {!hasMessages && isConnected ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickPromptRow}
+          >
+            {quickPrompts.map((prompt) => (
+              <Pressable
+                key={prompt}
+                onPress={() => handleSend(prompt)}
+                style={({ pressed }) => [styles.quickPrompt, { opacity: pressed ? 0.88 : 1 }]}
+              >
+                <Text style={styles.quickPromptText}>{prompt}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        <View style={styles.inputWrap}>
           <TextInput
-            style={styles.textInput}
             value={input}
             onChangeText={setInput}
-            placeholder="메시지를 입력하세요"
+            placeholder={isConnected ? '메시지를 입력하세요...' : 'AI 서버 연결 후 사용 가능'}
             placeholderTextColor={colors.text.disabled}
+            editable={isConnected && !isLoading}
+            style={styles.input}
             multiline
-            maxLength={500}
           />
           <Pressable
             onPress={() => handleSend()}
-            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
-            disabled={!input.trim()}
+            disabled={!isConnected || !input.trim() || isLoading}
+            style={({ pressed }) => [
+              styles.sendButton,
+              (!isConnected || !input.trim()) && { opacity: 0.4 },
+              { opacity: pressed ? 0.88 : undefined },
+            ]}
           >
-            <Ionicons
-              name="arrow-up"
-              size={20}
-              color={input.trim() ? colors.white : colors.text.disabled}
-            />
+            <Ionicons name="paper-plane" size={18} color={colors.primary.main} />
           </Pressable>
         </View>
       </View>
@@ -173,172 +192,142 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.white,
-    borderBottomWidth: 0.5,
-    borderBottomColor: colors.border.light,
+  inner: {
+    flex: 1,
+    paddingHorizontal: spacing.base,
   },
-  headerLeft: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.base,
+    marginBottom: spacing.base,
+  },
+  headerTitle: {
+    ...typography.title1,
+    color: colors.text.primary,
+  },
+  headerSubtitle: {
+    ...typography.body2,
+    color: colors.text.secondary,
+    marginTop: 4,
+    maxWidth: 260,
+  },
+  onlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.xs,
+    backgroundColor: colors.status.safeBg,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  headerAvatar: {
+  offlineBadge: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.status.safe,
+  },
+  offlineDot: {
+    backgroundColor: colors.text.tertiary,
+  },
+  onlineText: {
+    ...typography.captionBold,
+    color: colors.status.safe,
+  },
+  offlineText: {
+    color: colors.text.tertiary,
+  },
+  messageList: {
+    flex: 1,
+  },
+  messageContent: {
+    gap: spacing.base,
+    paddingVertical: spacing.base,
+  },
+  messageContentEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  assistantRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  assistantIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  assistantBubble: {
+    flexShrink: 1,
+    maxWidth: '82%',
+    padding: spacing.base,
+  },
+  assistantBubbleText: {
+    ...typography.body2,
+    color: colors.text.primary,
+  },
+  userRow: {
+    alignItems: 'flex-end',
+  },
+  userBubble: {
+    maxWidth: '76%',
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.base,
+  },
+  userBubbleText: {
+    ...typography.body2,
+    color: colors.white,
+  },
+  quickPromptRow: {
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  quickPrompt: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.primary.bg,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+  },
+  quickPromptText: {
+    ...typography.captionBold,
+    color: colors.primary.main,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    paddingLeft: spacing.base,
+    paddingRight: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    ...typography.body2,
+    color: colors.text.primary,
+    maxHeight: 100,
+  },
+  sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.primary.bg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerTitle: {
-    ...typography.body1Bold,
-    color: colors.text.primary,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    ...typography.label,
-    color: colors.text.tertiary,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.base,
-    gap: spacing.md,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: spacing.md,
-  },
-  emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  emptyTitle: {
-    ...typography.title3,
-    color: colors.text.primary,
-  },
-  emptySubtitle: {
-    ...typography.body2,
-    color: colors.text.tertiary,
-    textAlign: 'center',
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  bubbleRowUser: {
-    flexDirection: 'row-reverse',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarEmoji: {
-    fontSize: 16,
-  },
-  bubble: {
-    maxWidth: '75%',
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderRadius: radius.xl,
-  },
-  bubbleUser: {
-    backgroundColor: colors.primary.main,
-    borderBottomRightRadius: 4,
-  },
-  bubbleAI: {
-    backgroundColor: colors.white,
-    borderBottomLeftRadius: 4,
-    borderWidth: 0.5,
-    borderColor: colors.border.light,
-  },
-  bubbleText: {
-    ...typography.body2,
-    color: colors.text.primary,
-  },
-  bubbleTextUser: {
-    color: colors.white,
-  },
-  typingDots: {
-    ...typography.body2,
-    color: colors.text.disabled,
-    letterSpacing: 4,
-  },
-  quickRow: {
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  quickBtn: {
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.primary.main,
-  },
-  quickText: {
-    ...typography.captionBold,
-    color: colors.primary.main,
-  },
-  inputBar: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.sm,
-    backgroundColor: colors.white,
-    borderTopWidth: 0.5,
-    borderTopColor: colors.border.light,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: colors.background,
-    borderRadius: radius.xl,
-    paddingLeft: spacing.base,
-    paddingRight: spacing.xs,
-    paddingVertical: spacing.xs,
-    gap: spacing.sm,
-  },
-  textInput: {
-    flex: 1,
-    ...typography.body2,
-    color: colors.text.primary,
-    maxHeight: 100,
-    paddingVertical: spacing.sm,
-  },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary.main,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.border.light,
   },
 });

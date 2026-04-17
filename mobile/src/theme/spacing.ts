@@ -11,18 +11,19 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 22,
+  '2xl': 28,
+  '3xl': 34,
   full: 9999,
 } as const;
 
-// 환자 UX — 최소 터치 영역 48dp
 export const touchTarget = {
   min: 48,
   comfortable: 56,
+  xl: 64,
 } as const;
 
 export type Spacing = typeof spacing;

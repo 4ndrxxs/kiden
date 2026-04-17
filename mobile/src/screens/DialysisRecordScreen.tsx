@@ -1,116 +1,158 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors } from '../theme/colors';
+import { radius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { spacing, radius } from '../theme/spacing';
-import { GlassCard, GradientButton, LargeInput, IconButton, SectionHeader } from '../components/common';
-import { useHealthStore } from '../stores/healthStore';
+import { GradientButton, HeaderIconButton, SoftBadge, SurfaceCard } from '../design/system';
+import { formatKoreanDate, getDisplayProfile } from '../design/data';
 import { ULTRAFILTRATION_WARNING_THRESHOLD } from '../config/constants';
+import { useHealthStore } from '../stores/healthStore';
+import { useUserStore } from '../stores/userStore';
 
 export function DialysisRecordScreen() {
   const insets = useSafeAreaInsets();
-  const nav = useNavigation();
-  const addDialysisRecord = useHealthStore((s) => s.addDialysisRecord);
+  const navigation = useNavigation<any>();
+  const addDialysisRecord = useHealthStore((state) => state.addDialysisRecord);
+  const profile = useUserStore((state) => state.profile);
 
   const [preWeight, setPreWeight] = useState('');
   const [postWeight, setPostWeight] = useState('');
   const [memo, setMemo] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const uf = preWeight && postWeight
-    ? (Number(preWeight) - Number(postWeight)).toFixed(1)
-    : null;
+  const displayProfile = getDisplayProfile(profile);
+
+  const uf = useMemo(() => {
+    if (!preWeight || !postWeight) return null;
+    const value = Number(preWeight) - Number(postWeight);
+    if (Number.isNaN(value)) return null;
+    return Number(value.toFixed(1));
+  }, [preWeight, postWeight]);
 
   const handleSave = async () => {
-    await addDialysisRecord({
-      recordedAt: new Date().toISOString().split('T')[0],
-      preWeight: preWeight ? Number(preWeight) : null,
-      postWeight: postWeight ? Number(postWeight) : null,
-      memo: memo,
-    });
-    nav.goBack();
+    const pre = Number(preWeight);
+    const post = Number(postWeight);
+    if (!pre || !post) {
+      Alert.alert('입력 확인', '투석 전후 체중을 모두 입력해 주세요.');
+      return;
+    }
+    if (pre <= post) {
+      Alert.alert('입력 확인', '투석 전 체중이 후 체중보다 커야 합니다.');
+      return;
+    }
+    if (pre < 30 || pre > 200 || post < 30 || post > 200) {
+      Alert.alert('입력 확인', '체중 값이 올바르지 않습니다.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await addDialysisRecord({
+        recordedAt: new Date().toISOString().split('T')[0],
+        preWeight: pre,
+        postWeight: post,
+        memo,
+      });
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('저장 실패', '잠시 후 다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <IconButton name="arrow-back" onPress={() => nav.goBack()} />
-        <Text style={styles.headerTitle}>투석 기록</Text>
-        <View style={{ width: 48 }} />
-      </View>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.inner, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.headerRow}>
+          <HeaderIconButton name="chevron-back" onPress={() => navigation.goBack()} />
+          <Text style={styles.headerTitle}>투석 기록</Text>
+          <Pressable onPress={handleSave} disabled={saving}>
+            <Text style={[styles.saveText, saving && { opacity: 0.5 }]}>저장</Text>
+          </Pressable>
+        </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* 체중 기록 */}
-        <SectionHeader title="투석 전후 체중" />
-        <GlassCard>
-          <View style={styles.inputGroup}>
-            <LargeInput
-              label="투석 전 체중"
-              value={preWeight}
-              onChangeText={setPreWeight}
-              placeholder="68.0"
-              unit="kg"
-              keyboardType="decimal-pad"
-            />
-            <LargeInput
-              label="투석 후 체중"
-              value={postWeight}
-              onChangeText={setPostWeight}
-              placeholder="65.5"
-              unit="kg"
-              keyboardType="decimal-pad"
-            />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <Text style={styles.dateText}>{formatKoreanDate()}</Text>
+          {displayProfile.hospitalName || displayProfile.dialysisTime ? (
+            <Text style={styles.timeText}>
+              {[displayProfile.dialysisTime, displayProfile.hospitalName].filter(Boolean).join(' · ')}
+            </Text>
+          ) : (
+            <Text style={styles.timeText}>설정에서 병원과 시간을 등록하면 여기에 표시됩니다.</Text>
+          )}
+
+          <View style={styles.weightRow}>
+            <SurfaceCard style={styles.smallCard}>
+              <Text style={styles.cardCaption}>투석 전 체중</Text>
+              <TextInput
+                value={preWeight}
+                onChangeText={setPreWeight}
+                keyboardType="decimal-pad"
+                placeholder="—"
+                placeholderTextColor={colors.text.disabled}
+                style={styles.weightInput}
+                maxLength={5}
+              />
+              <Text style={styles.unitText}>kg</Text>
+            </SurfaceCard>
+            <SurfaceCard style={styles.smallCard}>
+              <Text style={styles.cardCaption}>투석 후 체중</Text>
+              <TextInput
+                value={postWeight}
+                onChangeText={setPostWeight}
+                keyboardType="decimal-pad"
+                placeholder="—"
+                placeholderTextColor={colors.text.disabled}
+                style={styles.weightInput}
+                maxLength={5}
+              />
+              <Text style={styles.unitText}>kg</Text>
+            </SurfaceCard>
           </View>
-        </GlassCard>
 
-        {/* 제수량 자동 계산 */}
-        {uf !== null && (
-          <GlassCard>
-            <View style={styles.ufCard}>
-              <Text style={styles.ufLabel}>제수량 (자동 계산)</Text>
-              <View style={styles.ufValueRow}>
-                <Text style={styles.ufValue}>{uf}</Text>
-                <Text style={styles.ufUnit}>L</Text>
-              </View>
-              {Number(uf) > ULTRAFILTRATION_WARNING_THRESHOLD && (
-                <View style={styles.warningBadge}>
-                  <Text style={styles.warningText}>⚠️ 제수량이 {ULTRAFILTRATION_WARNING_THRESHOLD}L을 초과합니다</Text>
-                </View>
-              )}
+          <SurfaceCard>
+            <View style={styles.ufHeader}>
+              <Text style={styles.ufLabel}>제수량 (UF)</Text>
+              {uf != null && uf > ULTRAFILTRATION_WARNING_THRESHOLD ? (
+                <SoftBadge label={`${ULTRAFILTRATION_WARNING_THRESHOLD}L 초과`} color={colors.status.danger} backgroundColor={colors.status.dangerBg} />
+              ) : null}
             </View>
-          </GlassCard>
-        )}
+            <View style={styles.ufValueRow}>
+              <Text style={styles.ufValue}>{uf != null ? uf.toFixed(1) : '—'}</Text>
+              <Text style={styles.ufUnit}>L</Text>
+            </View>
+            <Text style={styles.rangeText}>권장: 1.0 ~ {ULTRAFILTRATION_WARNING_THRESHOLD.toFixed(1)} L</Text>
+          </SurfaceCard>
 
-        {/* 메모 */}
-        <SectionHeader title="메모" />
-        <GlassCard>
-          <LargeInput
-            label="투석 중 특이사항"
-            value={memo}
-            onChangeText={setMemo}
-            placeholder="혈관접근로 상태, 합병증 등"
-          />
-        </GlassCard>
+          <SurfaceCard>
+            <Text style={styles.cardCaption}>특이사항 메모</Text>
+            <TextInput
+              value={memo}
+              onChangeText={setMemo}
+              placeholder="투석 중 발생한 증상, 혈관 상태, 약 변경 등을 적어 주세요"
+              placeholderTextColor={colors.text.disabled}
+              multiline
+              style={styles.memoInput}
+            />
+          </SurfaceCard>
 
-        <GradientButton
-          title="기록 완료"
-          onPress={handleSave}
-          gradient={colors.status.dangerGradient}
-          style={styles.saveBtn}
-        />
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          <GradientButton label={saving ? '저장 중...' : '저장하기'} onPress={handleSave} style={{ marginTop: spacing.sm }} />
+        </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -118,62 +160,98 @@ export function DialysisRecordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
-  header: {
+  inner: {
+    flex: 1,
+    paddingHorizontal: spacing.base,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.lg,
   },
   headerTitle: {
     ...typography.title3,
     color: colors.text.primary,
   },
-  scroll: {
-    flex: 1,
+  saveText: {
+    ...typography.body2Bold,
+    color: colors.primary.main,
   },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  inputGroup: {
+  content: {
+    paddingBottom: 40,
     gap: spacing.base,
   },
-  ufCard: {
-    alignItems: 'center',
+  dateText: {
+    ...typography.title3,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  timeText: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: spacing.base,
+  },
+  weightRow: {
+    flexDirection: 'row',
     gap: spacing.sm,
   },
-  ufLabel: {
+  smallCard: {
+    flex: 1,
+  },
+  cardCaption: {
     ...typography.captionBold,
     color: colors.text.secondary,
+    marginBottom: spacing.sm,
+  },
+  weightInput: {
+    ...typography.number.medium,
+    color: colors.text.primary,
+  },
+  unitText: {
+    ...typography.body2,
+    color: colors.text.secondary,
+  },
+  ufHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ufLabel: {
+    ...typography.body1Bold,
+    color: colors.text.primary,
   },
   ufValueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    marginTop: spacing.base,
   },
   ufValue: {
     ...typography.number.large,
-    color: colors.primary.main,
+    color: colors.text.primary,
   },
   ufUnit: {
-    ...typography.body1,
-    color: colors.text.tertiary,
+    ...typography.title3,
+    color: colors.text.secondary,
   },
-  warningBadge: {
-    backgroundColor: colors.status.cautionBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-    marginTop: spacing.xs,
+  rangeText: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: spacing.sm,
   },
-  warningText: {
-    ...typography.captionBold,
-    color: colors.status.caution,
-  },
-  saveBtn: {
-    marginTop: spacing.lg,
+  memoInput: {
+    minHeight: 112,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.base,
+    ...typography.body2,
+    color: colors.text.primary,
+    textAlignVertical: 'top',
   },
 });

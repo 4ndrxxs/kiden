@@ -43,11 +43,7 @@ export function RootNavigator({ isAuthenticated }: { isAuthenticated: boolean })
             <Stack.Screen name="Report" component={ReportScreen} />
           </>
         ) : (
-          <Stack.Screen
-            name="Auth"
-            component={AuthScreen}
-            options={{ animation: 'fade' }}
-          />
+          <Stack.Screen name="Auth" component={AuthScreen} options={{ animation: 'fade' }} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

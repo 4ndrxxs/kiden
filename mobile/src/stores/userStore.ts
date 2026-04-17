@@ -10,6 +10,9 @@ export interface Profile {
   diagnosis: string;
   dialysisDays: number[];
   idealBodyWeight: number | null;
+  hospitalName: string;
+  dialysisTime: string;
+  notes: string;
 }
 
 export interface HealthSettings {
@@ -88,11 +91,14 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({
         profile: {
           id: data.id,
-          displayName: data.display_name,
+          displayName: data.display_name ?? '',
           role: data.role,
           diagnosis: data.diagnosis ?? '',
-          dialysisDays: data.dialysis_days ?? DEFAULT_HEALTH_SETTINGS.dialysisDays,
+          dialysisDays: Array.isArray(data.dialysis_days) ? data.dialysis_days : [],
           idealBodyWeight: data.ideal_body_weight,
+          hospitalName: data.hospital_name ?? '',
+          dialysisTime: data.dialysis_time ?? '',
+          notes: data.notes ?? '',
         },
       });
     }
@@ -134,6 +140,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     if (updates.diagnosis !== undefined) dbUpdates.diagnosis = updates.diagnosis;
     if (updates.dialysisDays !== undefined) dbUpdates.dialysis_days = updates.dialysisDays;
     if (updates.idealBodyWeight !== undefined) dbUpdates.ideal_body_weight = updates.idealBodyWeight;
+    if (updates.hospitalName !== undefined) dbUpdates.hospital_name = updates.hospitalName;
+    if (updates.dialysisTime !== undefined) dbUpdates.dialysis_time = updates.dialysisTime;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
     const { error } = await supabase
       .from('profiles')
