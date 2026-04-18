@@ -142,7 +142,9 @@ export function AuthScreen() {
                             return;
                           }
                           const { supabase } = await import('../lib/supabase');
-                          const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                          const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                            redirectTo: 'kiden://auth/reset',
+                          });
                           if (error) {
                             Alert.alert('실패', error.message);
                           } else {

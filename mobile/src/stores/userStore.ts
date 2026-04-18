@@ -184,12 +184,28 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   signUp: async (email, password, displayName) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: {
+        data: { display_name: displayName },
+        emailRedirectTo: 'kiden://auth/callback',
+      },
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+
+    // 이메일 확인이 꺼져 있으면 signUp 직후 session 발급, 바로 로그인됨
+    // 이메일 확인이 켜져 있으면 session null → 수동 signIn 시도
+    if (!data.session) {
+      const signInResult = await supabase.auth.signInWithPassword({ email, password });
+      if (signInResult.error) {
+        return {
+          error:
+            '가입은 완료되었지만 로그인할 수 없습니다. 이메일 확인 메일을 확인하거나, 관리자에게 문의해 주세요.',
+        };
+      }
+    }
+    return { error: null };
   },
 
   signOut: async () => {
